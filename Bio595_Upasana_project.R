@@ -10,6 +10,8 @@ library(robis)
 #?occurrence
 library(dplyr)
 library(plyr)
+library(ggmap)
+library(osmdata)
 spdata=occurrence("Pennatulacea")
 
 spdatasub= spdata[, c("scientificName", "maximumDepthInMeters", "decimalLatitude", "decimalLongitude")] #subset by column
@@ -17,6 +19,8 @@ spdatasub= spdata[, c("scientificName", "maximumDepthInMeters", "decimalLatitude
 
 A_data= filter(spdatasub, grepl('Anthoptilum', scientificName)) #all the Anthptilum including Anthoptilum sp.     
 
+
+A_data[c(3,5,6),]
 
 U_data= filter(spdatasub, grepl('Umbellula', scientificName))
 P_data= filter(spdatasub, grepl('Pennatula', scientificName))
@@ -63,9 +67,12 @@ for(i in 1:nrow(V_data1)){
 }
 
 
-
+## Plotting histogram
 p= ggplot(V_data1, aes(genus, fill=genus)) + geom_histogram(stat="count") + theme_classic( base_size = 13)
 plot(p)
+
+
+##Plotting the depth profiles
 
 dir.create("V_figures")
 ddply(.data = V_data1, .variables = c("genus"), function(y){
@@ -76,8 +83,8 @@ ddply(.data = V_data1, .variables = c("genus"), function(y){
     geom_boxplot() + stat_summary(fun.y=mean, geom="line", aes(group=1))  + 
     stat_summary(fun.y=mean, geom="point")+ scale_y_reverse(lim=c(6000,0),breaks=seq(0,6000,500),expand = c(0, 0)) +
     scale_x_discrete(position="top") + theme_classic( base_size = 8) + 
-    theme(axis.text.x = element_text(angle=90, size= 5, face="italic"), axis.text.y = element_text(size =8),legend.position = "none") + 
-    labs(title="Depth profile", x="",y="Depth m")
+    theme(plot.title = element_text(face= "italic"),axis.text.x = element_text(angle=90, size= 5, face="italic"), axis.text.y = element_text(size =8),legend.position = "none") + 
+    labs(title= paste0(t), x="",y="Depth m")
   
   ggsave(filename = paste0('V_figures/',t,'.png'),
          plot = pl, width = 4, height = 3, units = 'in',
@@ -85,6 +92,29 @@ ddply(.data = V_data1, .variables = c("genus"), function(y){
   
 },  .progress = "text")
 
+
+##MAPPING the sampling sites
+
+bb = c(left = min(V_data1$decimalLongitude)-0.2, bottom = min(V_data1$decimalLatitude)-0.2, 
+            right = max(V_data1$decimalLongitude)+0.2, top = max(V_data1$decimalLatitude)+0.2)
+
+map_bb = get_stamenmap(bbox= bb, zoom = 4, map = 'terrain-background')
+ggmap(map_bb)
+
+dir.create("V_maps")
+ddply(V_data1, .variables = "genus", function(z){
+  
+  q = unique(z$genus)
+  
+  map = ggmap(map_bb) + 
+    geom_point(data = z, aes(x = decimalLongitude, y = decimalLatitude), size=0.09)+ 
+    theme(plot.title = element_text(face= "italic"))+
+    ggtitle(paste0(q))
+  
+  
+  ggsave(filename = paste0('V_maps/',q,'.png'), plot = map, width = 4, height = 3, units = 'in', dpi = 600)
+  
+}, .progress = "text")
 
 
 
