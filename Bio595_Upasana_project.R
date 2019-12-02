@@ -68,14 +68,15 @@ p= ggplot(V_data1, aes(genus, fill=genus)) + geom_histogram(stat="count") + them
 plot(p)
 
 dir.create("V_figures")
-ddply(.data = V_data1, .variables = "genus", function(x){
+ddply(.data = V_data1, .variables = c("genus"), function(y){
   
-  t = unique(x$genus)
+  t = unique(y$genus)
   
-  pl = ggplot(V_data1, aes(x=taxon, y=maximumDepthInMeters, fill=taxon) ) +
-    geom_boxplot() + scale_y_reverse(lim=c(6000,0),breaks=seq(0,6000,200),expand = c(0, 0)) +
-    scale_x_discrete(position="top") + theme_classic( base_size = 13) + 
-    theme(axis.text.x = element_text(face="italic"), legend.position = "none") + 
+  pl = ggplot(y, aes(x=taxon, y=maximumDepthInMeters, fill=taxon) ) +
+    geom_boxplot() + stat_summary(fun.y=mean, geom="line", aes(group=1))  + 
+    stat_summary(fun.y=mean, geom="point")+ scale_y_reverse(lim=c(6000,0),breaks=seq(0,6000,500),expand = c(0, 0)) +
+    scale_x_discrete(position="top") + theme_classic( base_size = 8) + 
+    theme(axis.text.x = element_text(angle=90, size= 5, face="italic"), axis.text.y = element_text(size =8),legend.position = "none") + 
     labs(title="Depth profile", x="",y="Depth m")
   
   ggsave(filename = paste0('V_figures/',t,'.png'),
@@ -83,6 +84,8 @@ ddply(.data = V_data1, .variables = "genus", function(x){
          dpi = 600)
   
 },  .progress = "text")
+
+
 
 
 
