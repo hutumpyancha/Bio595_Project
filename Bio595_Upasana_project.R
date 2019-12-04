@@ -1,17 +1,18 @@
 remove(list=ls())
 assign("last.warning", NULL, envir = baseenv())
+
 library(tidyverse)
 library(ggplot2)
-#install.packages("devtools")
+
 library(devtools)
 #install_github("iobis/robis")
 library(robis)
-#help(package = "robis") #accessing OBIS data
-#?occurrence
+
 library(dplyr)
 library(plyr)
 library(ggmap)
 library(osmdata)
+
 spdata=occurrence("Pennatulacea")
 
 spdatasub= spdata[, c("scientificName", "maximumDepthInMeters", "decimalLatitude", "decimalLongitude")] #subset by column
@@ -19,34 +20,45 @@ spdatasub= spdata[, c("scientificName", "maximumDepthInMeters", "decimalLatitude
 
 A_data= filter(spdatasub, grepl('Anthoptilum', scientificName)) #all the Anthptilum including Anthoptilum sp.     
 
-
 A_data[c(3,5,6),]
 
+#Saving data frame
+save(A_data, file = "Anthoptilum_depth.csv")
+
 U_data= filter(spdatasub, grepl('Umbellula', scientificName))
+
 P_data= filter(spdatasub, grepl('Pennatula', scientificName))
 
 V_data= rbind(A_data, U_data, P_data )
 
-
+#Order dataframe 
 V_data = V_data[order(V_data$scientificName),]
 
+#altering the data frame 
+#splitting into two columns 
 V_data$genus= str_split_fixed(string = V_data$scientificName, pattern = " ", n = 2)[,1]
 V_data$species= str_split_fixed(V_data$scientificName, " ", 2)[,2]
+
+#Creating a column with first letter of genus and "." for the scientific names with species names present
 g <- str_sub(string = V_data$genus, start = 1, end = 1)
 V_data$genus.period <- str_c(g,".",sep = "")
 
+#adding sp. to the species column without any species-name available
 V_data$species[V_data$species==""]<-"sp."
 
+#Creating two columns with scientific name  two formats- Genus species/sp. and G. species/sp.
 V_data$genus.species= paste(V_data$genus, "", V_data$species)
 V_data$genus.sp= paste(V_data$genus.period, "", V_data$species)
 
 V_data1= subset(V_data, genus != "Pennatulacea")
 
+#Summarise to find mean depth for the taxa 
+detach(package:plyr)
 V = V_data1 %>% group_by(scientificName) %>% summarise(avg.depth = mean( maximumDepthInMeters, na.rm = T))
+library(plyr)
 
 
-
-
+#Creating function to choose the correct scientific name format for each row
 taxon.fc <- function(x){
   
   if(V_data$species[i] == "sp."){
@@ -60,6 +72,7 @@ taxon.fc <- function(x){
   
 }
 
+# For-loop to put the correct format in a new column
 i=2
 V_data1$taxon = NA
 for(i in 1:nrow(V_data1)){
@@ -68,7 +81,8 @@ for(i in 1:nrow(V_data1)){
 
 
 ## Plotting histogram
-p= ggplot(V_data1, aes(genus, fill=genus)) + geom_histogram(stat="count") + theme_classic( base_size = 13)
+p= ggplot(V_data1, aes(genus, fill=genus)) + geom_histogram(stat="count") + 
+   theme_classic( base_size = 13)
 plot(p)
 
 
@@ -83,7 +97,8 @@ ddply(.data = V_data1, .variables = c("genus"), function(y){
     geom_boxplot() + stat_summary(fun.y=mean, geom="line", aes(group=1))  + 
     stat_summary(fun.y=mean, geom="point")+ scale_y_reverse(lim=c(6000,0),breaks=seq(0,6000,500),expand = c(0, 0)) +
     scale_x_discrete(position="top") + theme_classic( base_size = 8) + 
-    theme(plot.title = element_text(face= "italic"),axis.text.x = element_text(angle=90, size= 5, face="italic"), axis.text.y = element_text(size =8),legend.position = "none") + 
+    theme(plot.title = element_text(face= "italic"),axis.text.x = element_text(angle=90, size= 5, face="italic"), 
+          axis.text.y = element_text(size =8),legend.position = "none") + 
     labs(title= paste0(t), x="",y="Depth m")
   
   ggsave(filename = paste0('V_figures/',t,'.png'),
